@@ -40,25 +40,34 @@ Traditional job hunting is broken:
 
 ## 💡 The Solution
 
-Me Inc. creates a **self-reinforcing flywheel** where AI agents work together:
+Me Inc. creates a **self-reinforcing flywheel** where AI agents work together. **The key insight: you can enter from any point.**
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    THE ME INC. FLYWHEEL                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                              │
-│    📄 RESUME ENGINE          🔍 MARKET SCOUT                │
-│    Optimizes your value  →   Finds where to                 │
-│    proposition               insert that value              │
-│           ↑                         ↓                       │
-│           └──── 🤝 NETWORK ─────────┘                       │
-│                  MATCHER                                     │
-│           Connects you to the                               │
-│           people who control                                │
-│              the value                                       │
-│                                                              │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                    THE ME INC. FLYWHEEL                          │
+│              ⟳ Enter anywhere. The wheel keeps turning.          │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│                      📄 RESUME ENGINE                            │
+│                    "What value do I offer?"                      │
+│                             ↕                                    │
+│         ┌───────────────────┴───────────────────┐                │
+│         ↓                                       ↓                │
+│   🔍 MARKET SCOUT    ←───────────────→    🤝 NETWORK             │
+│  "Where is the need?"                   "Who needs help?"        │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
 ```
+
+### Three Entry Points, One Flywheel
+
+| Strategy | You Start By... | Then The System... |
+|----------|-----------------|-------------------|
+| **📄 Resume-First** | Perfecting your value proposition | Finds matching opportunities & connections |
+| **🔍 Market-First** | Exploring what's out there | Tailors your resume & finds warm intros |
+| **🤝 Network-First** | Reaching out to help people | Discovers opportunities & optimizes your pitch |
+
+**The magic**: Once you enter, the flywheel connects everything. Help someone in your network → they mention a role → you tailor your resume → you discover similar opportunities → you reach out to more people. **The wheel keeps turning.**
 
 ---
 
@@ -222,16 +231,62 @@ Not all tasks are equal. We use exponential scoring:
 
 ### The Compound Effect
 
+**Pick your entry point. The flywheel does the rest.**
+
+<table>
+<tr>
+<td width="33%">
+
+**📄 Resume-First Path**
 ```
-Week 1: Ship Resume Agent → Generate 5 tailored resumes
-Week 2: Ship Market Scout → Discover 200 opportunities
-Week 3: Combine → Auto-match + tailor for top 20
-Week 4: Ship Network Matcher → Find warm intros for 10
-Week 5: Result → 10 warm applications vs. 0 cold
-Week 6: Result → 5 first-round interviews
-Week 7: Result → 2 final rounds
-Week 8: Result → Multiple offers 🎉
+Start: Polish your story
+  ↓
+System finds matching jobs
+  ↓
+Discovers who can intro you
+  ↓
+Warm outreach with proof
+  ↓
+Interviews compound
 ```
+
+</td>
+<td width="33%">
+
+**🔍 Market-First Path**
+```
+Start: See what's out there
+  ↓
+Identify dream opportunities
+  ↓
+Tailor resume to match
+  ↓
+Find network paths in
+  ↓
+Targeted applications
+```
+
+</td>
+<td width="33%">
+
+**🤝 Network-First Path**
+```
+Start: Help people first
+  ↓
+Build genuine relationships
+  ↓
+Learn about hidden roles
+  ↓
+Get warm introductions
+  ↓
+Resume already trusted
+```
+
+</td>
+</tr>
+</table>
+
+**All paths lead to the same outcome**: A compounding system where every action feeds the next. The difference is just where *you* feel most comfortable starting.
 
 ---
 
