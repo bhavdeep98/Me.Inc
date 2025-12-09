@@ -40,6 +40,47 @@ interface Project {
   url?: string;
 }
 
+interface Certification {
+  name: string;
+  issuer?: string;
+  date?: string;
+}
+
+interface Publication {
+  title: string;
+  authors?: string;
+  venue?: string;
+  date?: string;
+  url?: string;
+  description?: string;
+}
+
+interface Award {
+  title: string;
+  issuer?: string;
+  date?: string;
+  description?: string;
+}
+
+interface Patent {
+  title: string;
+  number?: string;
+  date?: string;
+  description?: string;
+}
+
+interface Language {
+  language: string;
+  proficiency?: string;
+}
+
+interface Volunteer {
+  organization: string;
+  role?: string;
+  dates?: string;
+  description?: string;
+}
+
 interface ResumeData {
   basics: {
     name: string;
@@ -61,6 +102,12 @@ interface ResumeData {
     other?: string[];
   };
   projects?: Project[];
+  certifications?: Certification[];
+  publications?: Publication[];
+  awards?: Award[];
+  patents?: Patent[];
+  languages?: Language[];
+  volunteer?: Volunteer[];
   meta?: {
     years_experience?: number;
     core_archetype?: string;
@@ -447,6 +494,12 @@ What would you like to do?`
         education: data.content.education || [],
         skills: data.content.skills || {},
         projects: data.content.projects || [],
+        certifications: data.content.certifications || [],
+        publications: data.content.publications || [],
+        awards: data.content.awards || [],
+        patents: data.content.patents || [],
+        languages: data.content.languages || [],
+        volunteer: data.content.volunteer || [],
         meta: data.content.meta || {}
       });
 
@@ -810,6 +863,146 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
               </div>
             )}
 
+            {/* Publications Section */}
+            {resumeData.publications && resumeData.publications.length > 0 && (
+              <div className="mb-6">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-slate-900 mb-3 border-b-2 border-slate-200 pb-1">
+                  Publications
+                </h2>
+                <div className="space-y-3">
+                  {resumeData.publications.map((pub, i) => (
+                    <div key={i} className="text-sm">
+                      <h3 className="font-bold text-slate-900">{pub.title}</h3>
+                      {pub.authors && (
+                        <p className="text-slate-600 italic">{pub.authors}</p>
+                      )}
+                      <div className="flex flex-wrap gap-x-3 text-slate-500 text-xs mt-1">
+                        {pub.venue && <span>{pub.venue}</span>}
+                        {pub.date && <span>• {pub.date}</span>}
+                        {pub.url && (
+                          <a href={pub.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                            🔗 Link
+                          </a>
+                        )}
+                      </div>
+                      {pub.description && (
+                        <p className="text-slate-600 mt-1">{pub.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Patents Section */}
+            {resumeData.patents && resumeData.patents.length > 0 && (
+              <div className="mb-6">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-slate-900 mb-3 border-b-2 border-slate-200 pb-1">
+                  Patents
+                </h2>
+                <div className="space-y-3">
+                  {resumeData.patents.map((patent, i) => (
+                    <div key={i} className="text-sm">
+                      <div className="flex items-baseline gap-2">
+                        <h3 className="font-bold text-slate-900">{patent.title}</h3>
+                        {patent.number && (
+                          <span className="text-xs text-slate-500">#{patent.number}</span>
+                        )}
+                      </div>
+                      {patent.date && (
+                        <span className="text-slate-500 text-xs">{patent.date}</span>
+                      )}
+                      {patent.description && (
+                        <p className="text-slate-600 mt-1">{patent.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Certifications Section */}
+            {resumeData.certifications && resumeData.certifications.length > 0 && (
+              <div className="mb-6">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-slate-900 mb-3 border-b-2 border-slate-200 pb-1">
+                  Certifications
+                </h2>
+                <div className="space-y-2">
+                  {resumeData.certifications.map((cert, i) => (
+                    <div key={i} className="flex justify-between items-baseline text-sm">
+                      <div>
+                        <span className="font-semibold text-slate-900">{cert.name}</span>
+                        {cert.issuer && (
+                          <span className="text-slate-500"> — {cert.issuer}</span>
+                        )}
+                      </div>
+                      {cert.date && (
+                        <span className="text-slate-500 text-xs">{cert.date}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Awards Section */}
+            {resumeData.awards && resumeData.awards.length > 0 && (
+              <div className="mb-6">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-slate-900 mb-3 border-b-2 border-slate-200 pb-1">
+                  Awards & Honors
+                </h2>
+                <div className="space-y-2">
+                  {resumeData.awards.map((award, i) => (
+                    <div key={i} className="text-sm">
+                      <div className="flex justify-between items-baseline">
+                        <div>
+                          <span className="font-semibold text-slate-900">{award.title}</span>
+                          {award.issuer && (
+                            <span className="text-slate-500"> — {award.issuer}</span>
+                          )}
+                        </div>
+                        {award.date && (
+                          <span className="text-slate-500 text-xs">{award.date}</span>
+                        )}
+                      </div>
+                      {award.description && (
+                        <p className="text-slate-600 text-xs mt-1">{award.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Volunteer Section */}
+            {resumeData.volunteer && resumeData.volunteer.length > 0 && (
+              <div className="mb-6">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-slate-900 mb-3 border-b-2 border-slate-200 pb-1">
+                  Volunteer Experience
+                </h2>
+                <div className="space-y-3">
+                  {resumeData.volunteer.map((vol, i) => (
+                    <div key={i} className="text-sm">
+                      <div className="flex justify-between items-baseline">
+                        <div>
+                          <span className="font-bold text-slate-900">{vol.organization}</span>
+                          {vol.role && (
+                            <span className="text-slate-600"> — {vol.role}</span>
+                          )}
+                        </div>
+                        {vol.dates && (
+                          <span className="text-slate-500 text-xs">{vol.dates}</span>
+                        )}
+                      </div>
+                      {vol.description && (
+                        <p className="text-slate-600 mt-1">{vol.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Education Section */}
             {resumeData.education && resumeData.education.length > 0 && (
               <div className="mb-6">
@@ -849,6 +1042,25 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
                           onSave={(v) => updateEducation(i, 'dates', v)}
                         />
                       </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Languages Section */}
+            {resumeData.languages && resumeData.languages.length > 0 && (
+              <div className="mb-6">
+                <h2 className="text-lg font-bold uppercase tracking-wider text-slate-900 mb-3 border-b-2 border-slate-200 pb-1">
+                  Languages
+                </h2>
+                <div className="flex flex-wrap gap-3">
+                  {resumeData.languages.map((lang, i) => (
+                    <div key={i} className="text-sm">
+                      <span className="font-semibold text-slate-900">{lang.language}</span>
+                      {lang.proficiency && (
+                        <span className="text-slate-500"> ({lang.proficiency})</span>
+                      )}
                     </div>
                   ))}
                 </div>

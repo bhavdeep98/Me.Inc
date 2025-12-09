@@ -1,6 +1,7 @@
 import dspy
 from typing import List, Optional
 import os
+import ast
 
 # 1. Define Signatures (The "Contract")
 
@@ -76,8 +77,22 @@ class GuideService:
             years_experience=experience
         )
         
+        # DSPy may return missing_star_components as a string representation of a list
+        # We need to convert it to an actual list
+        missing = pred.missing_star_components
+        if isinstance(missing, str):
+            try:
+                missing = ast.literal_eval(missing)
+            except (ValueError, SyntaxError):
+                # If parsing fails, wrap the string in a list
+                missing = [missing] if missing else []
+        
+        # Ensure it's always a list
+        if not isinstance(missing, list):
+            missing = [missing] if missing else []
+        
         return {
-            "missing_components": pred.missing_star_components,
+            "missing_components": missing,
             "critique": pred.weakness_explanation,
             "question": pred.follow_up_question
         }

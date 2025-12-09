@@ -72,7 +72,7 @@ class PDFParserService:
         
         system_prompt = """You are an expert resume parser. Extract ALL information from the resume text into structured JSON.
 
-CRITICAL: You must capture EVERY work experience, EVERY bullet point, EVERY skill mentioned. Do not summarize or skip anything.
+CRITICAL: You must capture EVERY work experience, EVERY bullet point, EVERY skill, EVERY publication, EVERY award mentioned. Do not summarize or skip anything.
 
 Return ONLY valid JSON with this exact structure:
 
@@ -129,6 +129,46 @@ Return ONLY valid JSON with this exact structure:
       "date": "Date obtained or null"
     }
   ],
+  "publications": [
+    {
+      "title": "Publication Title",
+      "authors": "Author names as written",
+      "venue": "Journal, Conference, or Publisher name",
+      "date": "Publication date or year",
+      "url": "DOI or URL if available, otherwise null",
+      "description": "Brief description or abstract excerpt if available"
+    }
+  ],
+  "awards": [
+    {
+      "title": "Award or Honor Name",
+      "issuer": "Issuing organization",
+      "date": "Date received or null",
+      "description": "Brief description if available"
+    }
+  ],
+  "patents": [
+    {
+      "title": "Patent Title",
+      "number": "Patent number if available",
+      "date": "Filing or grant date",
+      "description": "Brief description"
+    }
+  ],
+  "languages": [
+    {
+      "language": "Language Name",
+      "proficiency": "Native, Fluent, Professional, Basic, etc."
+    }
+  ],
+  "volunteer": [
+    {
+      "organization": "Organization Name",
+      "role": "Role or Position",
+      "dates": "Date range",
+      "description": "Brief description of activities"
+    }
+  ],
   "projects": [
     {
       "name": "Project Name",
@@ -151,7 +191,12 @@ RULES:
 4. For skills, categorize them appropriately - don't leave any out
 5. If a section is not present in the resume, use empty array [] or null
 6. For accomplishments tags, extract 2-4 relevant keywords/technologies mentioned
-7. Be thorough - a complete resume might have 3-10+ bullet points per role"""
+7. Be thorough - a complete resume might have 3-10+ bullet points per role
+8. Extract ALL publications with full citation details (authors, venue, date)
+9. Extract ALL awards, honors, and recognitions
+10. Extract patents if present
+11. Extract spoken/written languages (not programming languages) separately
+12. Extract volunteer/community work if present"""
 
         user_prompt = f"""Parse this complete resume and extract ALL information into the JSON structure. 
 Do not skip any work experience, bullet points, or skills.
