@@ -22,15 +22,16 @@ class ResumeService:
         self.db.refresh(profile)
         return profile
 
-    def update_profile_content(self, profile_id: uuid.UUID, section: str, data: dict):
+    def update_profile_content(self, profile_id: uuid.UUID, updates: dict):
         profile = self.db.query(ResumeProfile).filter(ResumeProfile.profile_id == profile_id).first()
         if not profile:
             raise ValueError("Profile not found")
         
-        # Deep merge or section replacement logic here
-        # For MVP, we just replace the section
         current_content = dict(profile.content) if profile.content else {}
-        current_content[section] = data
+        
+        # Merge top-level keys
+        for key, value in updates.items():
+            current_content[key] = value
         
         profile.content = current_content
         self.db.commit()

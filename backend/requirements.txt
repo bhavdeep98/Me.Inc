@@ -10,3 +10,4 @@ pypdf
 python-multipart
 # LLM for resume parsing
 openai
+dspy-ai

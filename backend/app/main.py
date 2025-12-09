@@ -134,6 +134,43 @@ async def upload_resume(
     )
 
 
+class ResumeUpdateRequest(BaseModel):
+    content: dict
+
+@app.patch("/api/resume/{profile_id}", response_model=ResumeResponse)
+def update_resume(
+    profile_id: str, 
+    update: ResumeUpdateRequest, 
+    db: Session = Depends(get_db)
+):
+    """
+    Update specific sections of the resume content.
+    Expects a dictionary of top-level keys to update (e.g. {"basics": {...}}).
+    """
+    try:
+        profile_uuid = uuid.UUID(profile_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid profile ID format")
+        
+    from app.services.resume_service import ResumeService
+    service = ResumeService(db)
+    
+    try:
+        updated_profile = service.update_profile_content(
+            profile_id=profile_uuid,
+            updates=update.content
+        )
+        return ResumeResponse(
+            profile_id=str(updated_profile.profile_id),
+            profile_name=updated_profile.profile_name,
+            content=updated_profile.content
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.get("/api/resume/{profile_id}", response_model=ResumeResponse)
 def get_resume(profile_id: str, db: Session = Depends(get_db)):
     """Retrieve a resume profile by ID."""
@@ -192,3 +229,63 @@ def delete_resume(profile_id: str, db: Session = Depends(get_db)):
     db.commit()
     
     return {"message": "Profile deleted", "profile_id": profile_id}
+
+
+# Guide Agent Endpoints
+
+class CritiqueRequest(BaseModel):
+    bullet_text: str
+    domain: str = "General"
+    years_experience: int = 5
+
+class CritiqueResponse(BaseModel):
+    missing_components: list[str]
+    critique: str
+    question: str
+
+class RefineRequest(BaseModel):
+    original_text: str
+    context_answer: str
+    domain: str = "General"
+
+class RefineResponse(BaseModel):
+    refined_text: str
+    reasoning: str
+
+@app.post("/api/guide/critique", response_model=CritiqueResponse)
+def critique_bullet(req: CritiqueRequest):
+    """
+    Agent B (DSPy): Analyze a single bullet point using STAR methodology.
+    """
+    try:
+        from app.services.guide_service import get_guide_service
+        guide_service = get_guide_service()
+        
+        result = guide_service.analyze_bullet(
+            text=req.bullet_text,
+            domain=req.domain,
+            experience=req.years_experience
+        )
+        return result
+    except ImportError:
+        raise HTTPException(status_code=500, detail="dspy-ai not installed")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/guide/refine", response_model=RefineResponse)
+def refine_bullet(req: RefineRequest):
+    """
+    Agent B (DSPy): Rewrite a bullet point based on user answers.
+    """
+    try:
+        from app.services.guide_service import get_guide_service
+        guide_service = get_guide_service()
+        
+        result = guide_service.refine_bullet(
+            original=req.original_text,
+            answer=req.context_answer,
+            domain=req.domain
+        )
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

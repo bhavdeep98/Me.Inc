@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -66,6 +66,14 @@ interface ResumeData {
     core_archetype?: string;
     primary_domain?: string;
   };
+}
+
+// Pending critique context for refinement
+interface PendingCritique {
+  expIndex: number;
+  accIndex: number;
+  originalText: string;
+  question: string;
 }
 
 // Editable field component
@@ -146,12 +154,23 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export default function ResumeBuilder() {
   const [messages, setMessages] = useState<{ role: 'user' | 'agent'; content: string }[]>([
-    { role: 'agent', content: "👋 Hello! I'm your Resume Interviewer.\n\nUpload your resume PDF and I'll parse it completely. Then click on any text in the preview to edit it directly!" }
+    { role: 'agent', content: "👋 Hello! I'm your Resume Coach powered by AI.\n\n**How to use:**\n1. 📄 Upload your resume PDF\n2. ✨ Click \"Critique\" on any bullet to get STAR analysis\n3. 💬 Answer my questions to improve your bullets\n4. ✏️ Click any text to edit directly\n\nLet's make your resume stand out!" }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isCritiquing, setIsCritiquing] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
+  const [pendingCritique, setPendingCritique] = useState<PendingCritique | null>(null);
+  const [activeBullet, setActiveBullet] = useState<{expIndex: number; accIndex: number} | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   // Resume State
   const [resumeData, setResumeData] = useState<ResumeData>({
@@ -203,18 +222,184 @@ export default function ResumeBuilder() {
     }));
   };
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    setMessages(prev => [...prev, { role: 'user', content: input }]);
+  // Critique a bullet point using DSPy Agent
+  const handleCritique = async (expIndex: number, accIndex: number, bulletText: string, company: string) => {
+    setIsCritiquing(true);
+    setActiveBullet({ expIndex, accIndex });
+    
+    const domain = resumeData.meta?.primary_domain || "General";
+    const yearsExp = resumeData.meta?.years_experience || 5;
 
+    setMessages(prev => [...prev, { 
+      role: 'user', 
+      content: `✨ **Critique this bullet** from ${company}:\n\n"${bulletText}"` 
+    }]);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/guide/critique`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          bullet_text: bulletText,
+          domain: domain,
+          years_experience: yearsExp
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(error.detail || 'Critique failed');
+      }
+
+      const data = await response.json();
+      
+      // Store pending critique for refinement
+      setPendingCritique({
+        expIndex,
+        accIndex,
+        originalText: bulletText,
+        question: data.question
+      });
+
+      // Format the critique response
+      const missingComponents = Array.isArray(data.missing_components) 
+        ? data.missing_components.join(', ') 
+        : data.missing_components;
+
+      setMessages(prev => [...prev, { 
+        role: 'agent', 
+        content: `🔍 **STAR Analysis**
+
+**Missing Components:** ${missingComponents || 'None identified'}
+
+**Critique:** ${data.critique}
+
+---
+
+💭 **To improve this bullet, please answer:**
+
+${data.question}
+
+_Type your answer below and I'll rewrite the bullet for you._`
+      }]);
+
+    } catch (error) {
+      console.error('Critique error:', error);
+      setMessages(prev => [...prev, { 
+        role: 'agent', 
+        content: `❌ **Error**: ${error instanceof Error ? error.message : 'Failed to critique'}
+
+**Troubleshooting:**
+• Is the backend running? \`uvicorn app.main:app --reload\`
+• Is \`dspy-ai\` installed? \`pip install dspy-ai\`
+• Check your \`OPENAI_API_KEY\` in \`.env\``
+      }]);
+      setPendingCritique(null);
+    } finally {
+      setIsCritiquing(false);
+    }
+  };
+
+  // Handle user's answer to refine the bullet
+  const handleRefine = async (answer: string) => {
+    if (!pendingCritique) return;
+
+    setIsLoading(true);
+    const domain = resumeData.meta?.primary_domain || "General";
+
+    try {
+      const response = await fetch(`${API_BASE}/api/guide/refine`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          original_text: pendingCritique.originalText,
+          context_answer: answer,
+          domain: domain
+        })
+      });
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        throw new Error(error.detail || 'Refine failed');
+      }
+
+      const data = await response.json();
+      
+      // Update the bullet in resume
+      updateAccomplishment(
+        pendingCritique.expIndex, 
+        pendingCritique.accIndex, 
+        data.refined_text
+      );
+
+      // Highlight the updated section
+      setActiveSection('experience');
+      setTimeout(() => setActiveSection(null), 3000);
+
+      setMessages(prev => [...prev, { 
+        role: 'agent', 
+        content: `✅ **Bullet Refined!**
+
+**Before:**
+"${pendingCritique.originalText}"
+
+**After:**
+"${data.refined_text}"
+
+---
+
+**Why it's better:** ${data.reasoning}
+
+_The bullet has been updated in your resume. Click another bullet to continue improving!_`
+      }]);
+
+      setPendingCritique(null);
+      setActiveBullet(null);
+
+    } catch (error) {
+      console.error('Refine error:', error);
+      setMessages(prev => [...prev, { 
+        role: 'agent', 
+        content: `❌ **Error refining**: ${error instanceof Error ? error.message : 'Failed to refine'}`
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSend = async () => {
+    if (!input.trim()) return;
+    
+    const userMessage = input.trim();
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setInput('');
+
+    // If we have a pending critique, treat this as the answer
+    if (pendingCritique) {
+      await handleRefine(userMessage);
+      return;
+    }
+
+    // Otherwise, provide helpful guidance
+    setIsLoading(true);
     setTimeout(() => {
       setMessages(prev => [...prev, { 
         role: 'agent', 
-        content: "I understand! Click directly on the resume preview to edit any section. The changes will be reflected in real-time.\n\n💡 *Tip: The conversational refinement agent is coming soon!*" 
-      }]);
-    }, 800);
+        content: `I understand! Here's how I can help:
 
-    setInput('');
+🎯 **To improve a specific bullet:**
+Click the "✨ Critique" button next to any bullet point in your resume preview.
+
+✏️ **To edit directly:**
+Click on any text in the resume to edit it inline.
+
+📄 **To start fresh:**
+Upload a new resume PDF using the button above.
+
+What would you like to do?`
+      }]);
+      setIsLoading(false);
+    }, 500);
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -230,6 +415,9 @@ export default function ResumeBuilder() {
     }
 
     setIsLoading(true);
+    setPendingCritique(null);
+    setActiveBullet(null);
+    
     setMessages(prev => [...prev, { 
       role: 'user', 
       content: `📤 Uploading **${file.name}**...` 
@@ -269,24 +457,20 @@ export default function ResumeBuilder() {
       const expCount = data.content.work_experience?.length || 0;
       const bulletCount = data.content.work_experience?.reduce((acc: number, exp: WorkExperience) => 
         acc + (exp.accomplishments?.length || 0), 0) || 0;
-      const skillCount = Object.values(data.content.skills || {}).flat().length;
-      const eduCount = data.content.education?.length || 0;
-      const projectCount = data.content.projects?.length || 0;
       
       setMessages(prev => [...prev, { 
         role: 'agent', 
         content: `✅ **Resume parsed successfully!**
 
-📊 **Complete Analysis:**
-• **Name**: ${data.content.basics?.name || 'Not detected'}
-• **Experience**: ~${yearsExp} years (${archetype})${domain ? ` - ${domain}` : ''}
-• **Positions**: ${expCount} roles with ${bulletCount} accomplishments
-• **Skills**: ${skillCount} skills detected
-• **Education**: ${eduCount} entries
-${projectCount > 0 ? `• **Projects**: ${projectCount} projects\n` : ''}
-✏️ **Click on any text in the preview to edit it directly!**
+📊 **Profile:** ${data.content.basics?.name || 'Unknown'}
+⏱️ **Experience:** ~${yearsExp} years (${archetype})${domain ? ` in ${domain}` : ''}
+📝 **Found:** ${expCount} roles with **${bulletCount} bullet points**
 
-The resume is now fully editable. What would you like to improve?`
+---
+
+🎯 **Next Step:** Click the **"✨ Critique"** button next to any bullet point to get AI-powered feedback using the STAR methodology.
+
+I'll analyze what's missing and ask targeted questions to help you write stronger bullets!`
       }]);
 
       setActiveSection('experience');
@@ -335,7 +519,7 @@ The resume is now fully editable. What would you like to improve?`
               {cat.items?.map((skill, i) => (
                 <span 
                   key={i} 
-                  className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded border border-slate-200 hover:bg-amber-100 hover:border-amber-300 cursor-pointer transition-colors"
+                  className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded border border-slate-200"
                 >
                   {skill}
                 </span>
@@ -354,8 +538,13 @@ The resume is now fully editable. What would you like to improve?`
         <CardHeader className="flex flex-row justify-between items-center bg-white border-b px-6 py-4">
           <CardTitle className="flex items-center gap-2">
             <span className="text-2xl">🎯</span>
-            <span>Resume Interviewer</span>
-            {profileId && (
+            <span>Resume Coach</span>
+            {pendingCritique && (
+              <span className="text-xs text-purple-600 bg-purple-50 px-2 py-1 rounded-full ml-2 animate-pulse">
+                Awaiting answer...
+              </span>
+            )}
+            {profileId && !pendingCritique && (
               <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full ml-2">
                 ✓ Saved
               </span>
@@ -367,21 +556,21 @@ The resume is now fully editable. What would you like to improve?`
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
               accept=".pdf"
               onChange={handleUpload}
-              disabled={isLoading}
+              disabled={isLoading || isCritiquing}
             />
             <Button 
               variant="outline" 
               size="sm" 
-              disabled={isLoading}
+              disabled={isLoading || isCritiquing}
               className={isLoading ? 'animate-pulse' : ''}
             >
-              {isLoading ? '⏳ Parsing...' : '📄 Upload PDF'}
+              {isLoading ? '⏳ Processing...' : '📄 Upload PDF'}
             </Button>
           </div>
         </CardHeader>
         
         <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden pt-4">
-          <ScrollArea className="flex-1 pr-4">
+          <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
             <div className="flex flex-col gap-4">
               {messages.map((msg, i) => (
                 <div 
@@ -399,15 +588,15 @@ The resume is now fully editable. What would you like to improve?`
                   </div>
                 </div>
               ))}
-              {isLoading && (
+              {(isLoading || isCritiquing) && (
                 <div className="flex justify-start">
                   <div className="bg-white text-slate-600 p-4 rounded-2xl rounded-bl-md shadow-sm border border-slate-100 flex items-center gap-2">
                     <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
-                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
-                      <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                      <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                      <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                      <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
                     </div>
-                    <span className="text-sm">Parsing your complete resume...</span>
+                    <span className="text-sm">{isCritiquing ? 'Analyzing with STAR methodology...' : 'Processing...'}</span>
                   </div>
                 </div>
               )}
@@ -418,8 +607,10 @@ The resume is now fully editable. What would you like to improve?`
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your resume or request changes..."
-              className="resize-none min-h-[60px]"
+              placeholder={pendingCritique 
+                ? "Type your answer to improve the bullet..." 
+                : "Ask about your resume or click Critique on a bullet..."}
+              className={`resize-none min-h-[60px] ${pendingCritique ? 'border-purple-300 focus:border-purple-500' : ''}`}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
@@ -429,10 +620,10 @@ The resume is now fully editable. What would you like to improve?`
             />
             <Button 
               onClick={handleSend} 
-              className="h-auto px-6"
-              disabled={!input.trim()}
+              className={`h-auto px-6 ${pendingCritique ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
+              disabled={!input.trim() || isLoading || isCritiquing}
             >
-              Send
+              {pendingCritique ? 'Refine' : 'Send'}
             </Button>
           </div>
         </CardContent>
@@ -443,7 +634,7 @@ The resume is now fully editable. What would you like to improve?`
         <CardHeader className="flex flex-row justify-between items-center border-b bg-white">
           <CardTitle className="flex items-center gap-2">
             <span className="text-xl">📄</span>
-            Live Preview
+            Resume Preview
             <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
               ✏️ Click to edit
             </span>
@@ -486,14 +677,10 @@ The resume is now fully editable. What would you like to improve?`
                   </span>
                 )}
                 {resumeData.basics.linkedin && (
-                  <span className="flex items-center gap-1">
-                    🔗 LinkedIn
-                  </span>
+                  <span className="flex items-center gap-1">🔗 LinkedIn</span>
                 )}
                 {resumeData.basics.github && (
-                  <span className="flex items-center gap-1">
-                    💻 GitHub
-                  </span>
+                  <span className="flex items-center gap-1">💻 GitHub</span>
                 )}
               </div>
               {resumeData.basics.summary && (
@@ -553,16 +740,39 @@ The resume is now fully editable. What would you like to improve?`
                         )}
                       </div>
                       {exp.accomplishments && exp.accomplishments.length > 0 && (
-                        <ul className="list-disc list-outside ml-4 space-y-1.5">
-                          {exp.accomplishments.map((acc, j) => (
-                            <li key={j} className="text-slate-700 leading-relaxed text-sm pl-1">
-                              <EditableField 
-                                value={acc.raw_text} 
-                                onSave={(v) => updateAccomplishment(i, j, v)}
-                                multiline
-                              />
-                            </li>
-                          ))}
+                        <ul className="space-y-2">
+                          {exp.accomplishments.map((acc, j) => {
+                            const isActive = activeBullet?.expIndex === i && activeBullet?.accIndex === j;
+                            return (
+                              <li 
+                                key={j} 
+                                className={`flex items-start gap-2 group/bullet p-2 -ml-2 rounded-lg transition-all ${
+                                  isActive ? 'bg-purple-50 ring-2 ring-purple-300' : 'hover:bg-slate-50'
+                                }`}
+                              >
+                                <span className="text-slate-400 mt-0.5">•</span>
+                                <div className="flex-1 text-slate-700 leading-relaxed text-sm">
+                                  <EditableField 
+                                    value={acc.raw_text} 
+                                    onSave={(v) => updateAccomplishment(i, j, v)}
+                                    multiline
+                                  />
+                                </div>
+                                <button
+                                  onClick={() => handleCritique(i, j, acc.raw_text, exp.company)}
+                                  disabled={isCritiquing || isLoading}
+                                  className={`opacity-0 group-hover/bullet:opacity-100 transition-opacity shrink-0 px-2 py-1 text-xs rounded-full font-medium ${
+                                    isActive 
+                                      ? 'bg-purple-600 text-white opacity-100' 
+                                      : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                  } disabled:opacity-50`}
+                                  title="Get AI feedback on this bullet"
+                                >
+                                  ✨ Critique
+                                </button>
+                              </li>
+                            );
+                          })}
                         </ul>
                       )}
                     </div>
@@ -651,6 +861,10 @@ The resume is now fully editable. What would you like to improve?`
                 <span className="text-5xl mb-4">📄</span>
                 <p className="text-center text-lg">
                   Upload your resume PDF to see it<br />beautifully rendered and editable
+                </p>
+                <p className="text-center text-sm mt-2">
+                  Then click <span className="text-purple-500 font-medium">✨ Critique</span> on any bullet<br />
+                  to get AI-powered feedback!
                 </p>
               </div>
             )}
