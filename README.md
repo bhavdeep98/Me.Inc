@@ -194,7 +194,7 @@ npm run dev
 
 ### Try It Out
 
-1. Open http://localhost:3000
+1. Open http://localhost:3001 (or http://localhost:3000 depending on your setup)
 2. Upload your resume PDF
 3. Click "✨ Critique" on any bullet point
 4. Answer the AI's questions to improve your bullets
