@@ -209,7 +209,7 @@ export default function ResumeBuilder() {
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [profileId, setProfileId] = useState<string | null>(null);
   const [pendingCritique, setPendingCritique] = useState<PendingCritique | null>(null);
-  const [activeBullet, setActiveBullet] = useState<{expIndex: number; accIndex: number} | null>(null);
+  const [activeBullet, setActiveBullet] = useState<{ expIndex: number; accIndex: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to bottom when new messages arrive
@@ -240,7 +240,7 @@ export default function ResumeBuilder() {
   const updateWorkExperience = (expIndex: number, field: keyof WorkExperience, value: string) => {
     setResumeData(prev => ({
       ...prev,
-      work_experience: prev.work_experience.map((exp, i) => 
+      work_experience: prev.work_experience.map((exp, i) =>
         i === expIndex ? { ...exp, [field]: value } : exp
       )
     }));
@@ -249,7 +249,7 @@ export default function ResumeBuilder() {
   const updateAccomplishment = (expIndex: number, accIndex: number, value: string) => {
     setResumeData(prev => ({
       ...prev,
-      work_experience: prev.work_experience.map((exp, i) => 
+      work_experience: prev.work_experience.map((exp, i) =>
         i === expIndex ? {
           ...exp,
           accomplishments: exp.accomplishments?.map((acc, j) =>
@@ -273,13 +273,13 @@ export default function ResumeBuilder() {
   const handleCritique = async (expIndex: number, accIndex: number, bulletText: string, company: string) => {
     setIsCritiquing(true);
     setActiveBullet({ expIndex, accIndex });
-    
+
     const domain = resumeData.meta?.primary_domain || "General";
     const yearsExp = resumeData.meta?.years_experience || 5;
 
-    setMessages(prev => [...prev, { 
-      role: 'user', 
-      content: `✨ **Critique this bullet** from ${company}:\n\n"${bulletText}"` 
+    setMessages(prev => [...prev, {
+      role: 'user',
+      content: `✨ **Critique this bullet** from ${company}:\n\n"${bulletText}"`
     }]);
 
     try {
@@ -299,7 +299,7 @@ export default function ResumeBuilder() {
       }
 
       const data = await response.json();
-      
+
       // Store pending critique for refinement
       setPendingCritique({
         expIndex,
@@ -309,12 +309,12 @@ export default function ResumeBuilder() {
       });
 
       // Format the critique response
-      const missingComponents = Array.isArray(data.missing_components) 
-        ? data.missing_components.join(', ') 
+      const missingComponents = Array.isArray(data.missing_components)
+        ? data.missing_components.join(', ')
         : data.missing_components;
 
-      setMessages(prev => [...prev, { 
-        role: 'agent', 
+      setMessages(prev => [...prev, {
+        role: 'agent',
         content: `🔍 **STAR Analysis**
 
 **Missing Components:** ${missingComponents || 'None identified'}
@@ -332,8 +332,8 @@ _Type your answer below and I'll rewrite the bullet for you._`
 
     } catch (error) {
       console.error('Critique error:', error);
-      setMessages(prev => [...prev, { 
-        role: 'agent', 
+      setMessages(prev => [...prev, {
+        role: 'agent',
         content: `❌ **Error**: ${error instanceof Error ? error.message : 'Failed to critique'}
 
 **Troubleshooting:**
@@ -371,11 +371,11 @@ _Type your answer below and I'll rewrite the bullet for you._`
       }
 
       const data = await response.json();
-      
+
       // Update the bullet in resume
       updateAccomplishment(
-        pendingCritique.expIndex, 
-        pendingCritique.accIndex, 
+        pendingCritique.expIndex,
+        pendingCritique.accIndex,
         data.refined_text
       );
 
@@ -383,8 +383,8 @@ _Type your answer below and I'll rewrite the bullet for you._`
       setActiveSection('experience');
       setTimeout(() => setActiveSection(null), 3000);
 
-      setMessages(prev => [...prev, { 
-        role: 'agent', 
+      setMessages(prev => [...prev, {
+        role: 'agent',
         content: `✅ **Bullet Refined!**
 
 **Before:**
@@ -405,8 +405,8 @@ _The bullet has been updated in your resume. Click another bullet to continue im
 
     } catch (error) {
       console.error('Refine error:', error);
-      setMessages(prev => [...prev, { 
-        role: 'agent', 
+      setMessages(prev => [...prev, {
+        role: 'agent',
         content: `❌ **Error refining**: ${error instanceof Error ? error.message : 'Failed to refine'}`
       }]);
     } finally {
@@ -416,7 +416,7 @@ _The bullet has been updated in your resume. Click another bullet to continue im
 
   const handleSend = async () => {
     if (!input.trim()) return;
-    
+
     const userMessage = input.trim();
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setInput('');
@@ -430,8 +430,8 @@ _The bullet has been updated in your resume. Click another bullet to continue im
     // Otherwise, provide helpful guidance
     setIsLoading(true);
     setTimeout(() => {
-      setMessages(prev => [...prev, { 
-        role: 'agent', 
+      setMessages(prev => [...prev, {
+        role: 'agent',
         content: `I understand! Here's how I can help:
 
 🎯 **To improve a specific bullet:**
@@ -454,9 +454,9 @@ What would you like to do?`
     if (!file) return;
 
     if (!file.name.toLowerCase().endsWith('.pdf')) {
-      setMessages(prev => [...prev, { 
-        role: 'agent', 
-        content: "⚠️ Please upload a PDF file." 
+      setMessages(prev => [...prev, {
+        role: 'agent',
+        content: "⚠️ Please upload a PDF file."
       }]);
       return;
     }
@@ -464,10 +464,10 @@ What would you like to do?`
     setIsLoading(true);
     setPendingCritique(null);
     setActiveBullet(null);
-    
-    setMessages(prev => [...prev, { 
-      role: 'user', 
-      content: `📤 Uploading **${file.name}**...` 
+
+    setMessages(prev => [...prev, {
+      role: 'user',
+      content: `📤 Uploading **${file.name}**...`
     }]);
 
     try {
@@ -486,7 +486,7 @@ What would you like to do?`
 
       const data = await response.json();
       setProfileId(data.profile_id);
-      
+
       // Update resume state with all parsed data
       setResumeData({
         basics: data.content.basics || { name: "Unknown", summary: "" },
@@ -508,11 +508,11 @@ What would you like to do?`
       const archetype = data.content.meta?.core_archetype || "professional";
       const domain = data.content.meta?.primary_domain || "";
       const expCount = data.content.work_experience?.length || 0;
-      const bulletCount = data.content.work_experience?.reduce((acc: number, exp: WorkExperience) => 
+      const bulletCount = data.content.work_experience?.reduce((acc: number, exp: WorkExperience) =>
         acc + (exp.accomplishments?.length || 0), 0) || 0;
-      
-      setMessages(prev => [...prev, { 
-        role: 'agent', 
+
+      setMessages(prev => [...prev, {
+        role: 'agent',
         content: `✅ **Resume parsed successfully!**
 
 📊 **Profile:** ${data.content.basics?.name || 'Unknown'}
@@ -531,8 +531,8 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
 
     } catch (error) {
       console.error('Upload error:', error);
-      setMessages(prev => [...prev, { 
-        role: 'agent', 
+      setMessages(prev => [...prev, {
+        role: 'agent',
         content: `❌ **Error**: ${error instanceof Error ? error.message : 'Failed to parse resume'}
 
 **Troubleshooting:**
@@ -549,7 +549,7 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
   // Render all skills
   const renderSkills = () => {
     if (!resumeData.skills) return null;
-    
+
     const skillCategories = [
       { key: 'languages', label: 'Languages', items: resumeData.skills.languages },
       { key: 'frameworks', label: 'Frameworks', items: resumeData.skills.frameworks },
@@ -557,9 +557,9 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
       { key: 'cloud', label: 'Cloud', items: resumeData.skills.cloud },
       { key: 'other', label: 'Other', items: resumeData.skills.other },
     ].filter(cat => cat.items && cat.items.length > 0);
-    
+
     if (skillCategories.length === 0) return null;
-    
+
     return (
       <div className="mb-6">
         <h2 className="text-lg font-bold uppercase tracking-wider text-slate-900 mb-3 border-b-2 border-slate-200 pb-1">
@@ -570,8 +570,8 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
             <div key={cat.key} className="flex flex-wrap gap-1 items-center">
               <span className="text-xs font-semibold text-slate-500 w-20">{cat.label}:</span>
               {cat.items?.map((skill, i) => (
-                <span 
-                  key={i} 
+                <span
+                  key={i}
                   className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs rounded border border-slate-200"
                 >
                   {skill}
@@ -611,9 +611,9 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
               onChange={handleUpload}
               disabled={isLoading || isCritiquing}
             />
-            <Button 
-              variant="outline" 
-              size="sm" 
+            <Button
+              variant="outline"
+              size="sm"
               disabled={isLoading || isCritiquing}
               className={isLoading ? 'animate-pulse' : ''}
             >
@@ -621,21 +621,20 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
             </Button>
           </div>
         </CardHeader>
-        
+
         <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden pt-4">
           <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
             <div className="flex flex-col gap-4">
               {messages.map((msg, i) => (
-                <div 
-                  key={i} 
+                <div
+                  key={i}
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
-                  <div 
-                    className={`max-w-[90%] p-4 rounded-2xl whitespace-pre-wrap text-sm leading-relaxed ${
-                      msg.role === 'user' 
-                        ? 'bg-slate-900 text-white rounded-br-md' 
-                        : 'bg-white text-slate-700 shadow-sm border border-slate-100 rounded-bl-md'
-                    }`}
+                  <div
+                    className={`max-w-[90%] p-4 rounded-2xl whitespace-pre-wrap text-sm leading-relaxed ${msg.role === 'user'
+                      ? 'bg-slate-900 text-white rounded-br-md'
+                      : 'bg-white text-slate-700 shadow-sm border border-slate-100 rounded-bl-md'
+                      }`}
                   >
                     {msg.content}
                   </div>
@@ -660,8 +659,8 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={pendingCritique 
-                ? "Type your answer to improve the bullet..." 
+              placeholder={pendingCritique
+                ? "Type your answer to improve the bullet..."
                 : "Ask about your resume or click Critique on a bullet..."}
               className={`resize-none min-h-[60px] ${pendingCritique ? 'border-purple-300 focus:border-purple-500' : ''}`}
               onKeyDown={(e) => {
@@ -671,8 +670,8 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
                 }
               }}
             />
-            <Button 
-              onClick={handleSend} 
+            <Button
+              onClick={handleSend}
               className={`h-auto px-6 ${pendingCritique ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
               disabled={!input.trim() || isLoading || isCritiquing}
             >
@@ -699,7 +698,7 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
             </span>
           )}
         </CardHeader>
-        
+
         <CardContent className="flex-1 overflow-auto p-6">
           {/* Resume Document */}
           <div className="bg-white max-w-[800px] mx-auto shadow-lg p-8 text-sm text-slate-800 font-serif border border-slate-200 min-h-full">
@@ -707,8 +706,8 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
             {/* Header */}
             <div className="border-b-2 border-slate-300 pb-4 mb-6">
               <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                <EditableField 
-                  value={resumeData.basics.name} 
+                <EditableField
+                  value={resumeData.basics.name}
                   onSave={(v) => updateBasics('name', v)}
                   className="text-2xl font-bold"
                 />
@@ -738,8 +737,8 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
               </div>
               {resumeData.basics.summary && (
                 <p className="mt-4 text-slate-700 leading-relaxed text-sm">
-                  <EditableField 
-                    value={resumeData.basics.summary} 
+                  <EditableField
+                    value={resumeData.basics.summary}
                     onSave={(v) => updateBasics('summary', v)}
                     multiline
                   />
@@ -749,12 +748,11 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
 
             {/* Experience Section */}
             {resumeData.work_experience.length > 0 && (
-              <div 
-                className={`mb-6 transition-all duration-500 rounded-lg ${
-                  activeSection === 'experience' 
-                    ? 'ring-2 ring-amber-400 ring-offset-4 bg-amber-50/30 p-4 -mx-4' 
-                    : ''
-                }`}
+              <div
+                className={`mb-6 transition-all duration-500 rounded-lg ${activeSection === 'experience'
+                  ? 'ring-2 ring-amber-400 ring-offset-4 bg-amber-50/30 p-4 -mx-4'
+                  : ''
+                  }`}
               >
                 <h2 className="text-lg font-bold uppercase tracking-wider text-slate-900 mb-4 border-b-2 border-slate-200 pb-1">
                   Experience
@@ -764,29 +762,29 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
                     <div key={i} className="group">
                       <div className="flex justify-between items-baseline mb-1">
                         <h3 className="font-bold text-base text-slate-900">
-                          <EditableField 
-                            value={exp.company} 
+                          <EditableField
+                            value={exp.company}
                             onSave={(v) => updateWorkExperience(i, 'company', v)}
                             className="font-bold"
                           />
                         </h3>
                         <span className="text-slate-500 text-xs whitespace-nowrap ml-2">
-                          <EditableField 
-                            value={exp.dates || ''} 
+                          <EditableField
+                            value={exp.dates || ''}
                             onSave={(v) => updateWorkExperience(i, 'dates', v)}
                           />
                         </span>
                       </div>
                       <div className="font-semibold text-slate-600 text-sm mb-2">
-                        <EditableField 
-                          value={exp.role} 
+                        <EditableField
+                          value={exp.role}
                           onSave={(v) => updateWorkExperience(i, 'role', v)}
                         />
                         {exp.location && (
                           <span className="font-normal text-slate-400">
                             {' · '}
-                            <EditableField 
-                              value={exp.location} 
+                            <EditableField
+                              value={exp.location}
                               onSave={(v) => updateWorkExperience(i, 'location', v)}
                             />
                           </span>
@@ -797,16 +795,15 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
                           {exp.accomplishments.map((acc, j) => {
                             const isActive = activeBullet?.expIndex === i && activeBullet?.accIndex === j;
                             return (
-                              <li 
-                                key={j} 
-                                className={`flex items-start gap-2 group/bullet p-2 -ml-2 rounded-lg transition-all ${
-                                  isActive ? 'bg-purple-50 ring-2 ring-purple-300' : 'hover:bg-slate-50'
-                                }`}
+                              <li
+                                key={j}
+                                className={`flex items-start gap-2 group/bullet p-2 -ml-2 rounded-lg transition-all ${isActive ? 'bg-purple-50 ring-2 ring-purple-300' : 'hover:bg-slate-50'
+                                  }`}
                               >
                                 <span className="text-slate-400 mt-0.5">•</span>
                                 <div className="flex-1 text-slate-700 leading-relaxed text-sm">
-                                  <EditableField 
-                                    value={acc.raw_text} 
+                                  <EditableField
+                                    value={acc.raw_text}
                                     onSave={(v) => updateAccomplishment(i, j, v)}
                                     multiline
                                   />
@@ -814,11 +811,10 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
                                 <button
                                   onClick={() => handleCritique(i, j, acc.raw_text, exp.company)}
                                   disabled={isCritiquing || isLoading}
-                                  className={`opacity-0 group-hover/bullet:opacity-100 transition-opacity shrink-0 px-2 py-1 text-xs rounded-full font-medium ${
-                                    isActive 
-                                      ? 'bg-purple-600 text-white opacity-100' 
-                                      : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                                  } disabled:opacity-50`}
+                                  className={`opacity-0 group-hover/bullet:opacity-100 transition-opacity shrink-0 px-2 py-1 text-xs rounded-full font-medium ${isActive
+                                    ? 'bg-purple-600 text-white opacity-100'
+                                    : 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                                    } disabled:opacity-50`}
                                   title="Get AI feedback on this bullet"
                                 >
                                   ✨ Critique
@@ -1014,21 +1010,21 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
                     <div key={i} className="flex justify-between items-baseline">
                       <div>
                         <h3 className="font-bold text-slate-900">
-                          <EditableField 
-                            value={edu.institution} 
+                          <EditableField
+                            value={edu.institution}
                             onSave={(v) => updateEducation(i, 'institution', v)}
                           />
                         </h3>
                         <div className="text-slate-600 text-sm">
-                          <EditableField 
-                            value={edu.degree} 
+                          <EditableField
+                            value={edu.degree}
                             onSave={(v) => updateEducation(i, 'degree', v)}
                           />
                           {edu.field && (
                             <>
                               {' in '}
-                              <EditableField 
-                                value={edu.field} 
+                              <EditableField
+                                value={edu.field}
                                 onSave={(v) => updateEducation(i, 'field', v)}
                               />
                             </>
@@ -1037,8 +1033,8 @@ I'll analyze what's missing and ask targeted questions to help you write stronge
                         </div>
                       </div>
                       <span className="text-slate-500 text-xs whitespace-nowrap ml-2">
-                        <EditableField 
-                          value={edu.dates || ''} 
+                        <EditableField
+                          value={edu.dates || ''}
                           onSave={(v) => updateEducation(i, 'dates', v)}
                         />
                       </span>
