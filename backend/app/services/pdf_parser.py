@@ -31,19 +31,38 @@ class PDFParserService:
         self.client = OpenAI(api_key=api_key)
     
     def extract_text_from_pdf(self, pdf_bytes: bytes) -> str:
-        """Extract raw text from PDF file bytes."""
+        """Extract raw text from PDF file bytes with improved handling."""
         if PdfReader is None:
             raise ImportError("pypdf package is required. Run: pip install pypdf")
         
         reader = PdfReader(BytesIO(pdf_bytes))
         text_parts = []
         
-        for page in reader.pages:
+        for i, page in enumerate(reader.pages):
             text = page.extract_text()
             if text:
+                # Clean up the text
+                text = text.strip()
+                # Add page separator for multi-page resumes
+                if i > 0:
+                    text_parts.append(f"\n--- Page {i + 1} ---\n")
                 text_parts.append(text)
         
-        return "\n\n".join(text_parts)
+        full_text = "\n".join(text_parts)
+        
+        # Basic text cleanup
+        # Remove excessive whitespace while preserving structure
+        lines = full_text.split('\n')
+        cleaned_lines = []
+        for line in lines:
+            # Preserve non-empty lines
+            stripped = line.strip()
+            if stripped:
+                cleaned_lines.append(stripped)
+            elif cleaned_lines and cleaned_lines[-1]:  # Add single blank line
+                cleaned_lines.append('')
+        
+        return '\n'.join(cleaned_lines)
     
     def parse_resume_to_json(self, raw_text: str) -> dict:
         """
@@ -51,55 +70,57 @@ class PDFParserService:
         into our structured JSON schema.
         """
         
-        system_prompt = """You are a professional resume parser. Your job is to extract information from resume text and structure it into a specific JSON format.
+        system_prompt = """You are an expert resume parser. Extract ALL information from the resume text into structured JSON.
 
-You MUST return ONLY valid JSON, no markdown, no explanation. The JSON must follow this exact schema:
+CRITICAL: You must capture EVERY work experience, EVERY bullet point, EVERY skill mentioned. Do not summarize or skip anything.
+
+Return ONLY valid JSON with this exact structure:
 
 {
   "basics": {
     "name": "Full Name",
     "email": "email@example.com",
     "phone": "phone number or null",
-    "location": "City, State or null",
+    "location": "City, State/Country or null",
     "linkedin": "LinkedIn URL or null",
-    "summary": "Professional summary paragraph"
+    "github": "GitHub URL or null",
+    "website": "Personal website or null",
+    "summary": "Professional summary - if not explicitly stated, create a 2-3 sentence summary based on the resume content"
   },
   "work_experience": [
     {
       "company": "Company Name",
       "role": "Job Title",
-      "dates": "Start - End",
+      "dates": "Start Date - End Date (e.g., Jan 2020 - Present)",
       "location": "City, State or Remote",
-      "description": "Brief role description",
       "accomplishments": [
         {
-          "raw_text": "Original bullet point",
+          "raw_text": "The exact bullet point text from the resume",
           "refined_components": {
-            "problem": "What problem existed (or null)",
-            "action": "What action was taken",
-            "impact": "What was the measurable result (or null)"
+            "action": "What was done",
+            "impact": "Measurable result if mentioned, otherwise null"
           },
-          "tags": ["relevant", "skill", "tags"]
+          "tags": ["relevant", "keywords", "technologies"]
         }
       ]
     }
   ],
   "education": [
     {
-      "institution": "University Name",
-      "degree": "Degree Type",
-      "field": "Field of Study",
+      "institution": "University/School Name",
+      "degree": "Degree Type (BS, MS, PhD, etc.)",
+      "field": "Field of Study/Major",
       "dates": "Graduation Year or Date Range",
-      "gpa": "GPA if mentioned or null",
-      "highlights": ["honors", "activities", "etc"]
+      "gpa": "GPA if mentioned, otherwise null",
+      "highlights": ["honors", "relevant coursework", "activities"]
     }
   ],
   "skills": {
-    "technical": ["skill1", "skill2"],
-    "languages": ["English", "etc"],
-    "tools": ["tool1", "tool2"],
-    "frameworks": ["framework1"],
-    "other": ["other skills"]
+    "languages": ["Programming languages"],
+    "frameworks": ["Frameworks and libraries"],
+    "tools": ["Tools, platforms, databases"],
+    "cloud": ["Cloud services and infrastructure"],
+    "other": ["Other skills, methodologies, soft skills"]
   },
   "certifications": [
     {
@@ -108,28 +129,38 @@ You MUST return ONLY valid JSON, no markdown, no explanation. The JSON must foll
       "date": "Date obtained or null"
     }
   ],
+  "projects": [
+    {
+      "name": "Project Name",
+      "description": "Brief description",
+      "technologies": ["tech", "used"],
+      "url": "Project URL if mentioned"
+    }
+  ],
   "meta": {
     "years_experience": 0,
-    "core_archetype": "Individual Contributor or Technical Leader or Executive"
+    "core_archetype": "Individual Contributor or Technical Leader or Executive",
+    "primary_domain": "e.g., Backend, Frontend, ML, DevOps, etc."
   }
 }
 
-Rules:
-1. If information is not present, use null for single values or empty arrays [] for lists
-2. Estimate years_experience from work history dates
-3. Choose core_archetype based on seniority: IC for <5y, Technical Leader for 5-12y, Executive for 12y+
-4. Extract ALL accomplishments as bullet points, even if brief
-5. For accomplishments, try to identify Problem/Action/Impact patterns, but don't force it
-6. Tags should be 2-5 relevant keywords per accomplishment
-7. If you cannot determine the summary, create one based on the overall resume content"""
+RULES:
+1. Extract EVERY bullet point from work experience - do not skip or combine them
+2. Preserve the original text of accomplishments in raw_text
+3. Calculate years_experience by summing up all work experience durations
+4. For skills, categorize them appropriately - don't leave any out
+5. If a section is not present in the resume, use empty array [] or null
+6. For accomplishments tags, extract 2-4 relevant keywords/technologies mentioned
+7. Be thorough - a complete resume might have 3-10+ bullet points per role"""
 
-        user_prompt = f"""Parse this resume text and return the structured JSON:
+        user_prompt = f"""Parse this complete resume and extract ALL information into the JSON structure. 
+Do not skip any work experience, bullet points, or skills.
 
 ---RESUME TEXT START---
 {raw_text}
 ---RESUME TEXT END---
 
-Return ONLY the JSON object, nothing else."""
+Return ONLY the complete JSON object with all resume content."""
 
         response = self.client.chat.completions.create(
             model="gpt-4o",
@@ -137,22 +168,13 @@ Return ONLY the JSON object, nothing else."""
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            max_tokens=4096,
-            temperature=0.1  # Low temperature for consistent parsing
+            max_tokens=8192,  # Increased for longer resumes
+            temperature=0.1,
+            response_format={"type": "json_object"}  # Enforce JSON output
         )
         
         # Extract the JSON from the response
         response_text = response.choices[0].message.content.strip()
-        
-        # Clean up any potential markdown code blocks
-        if response_text.startswith("```"):
-            lines = response_text.split("\n")
-            # Remove first and last lines (```json and ```)
-            if lines[-1].strip() == "```":
-                lines = lines[1:-1]
-            else:
-                lines = lines[1:]
-            response_text = "\n".join(lines)
         
         try:
             return json.loads(response_text)
@@ -163,9 +185,11 @@ Return ONLY the JSON object, nothing else."""
                 "work_experience": [],
                 "education": [],
                 "skills": {},
+                "projects": [],
+                "certifications": [],
                 "meta": {"years_experience": 0, "core_archetype": "Individual Contributor"},
                 "_parse_error": str(e),
-                "_raw_response": response_text[:1000]
+                "_raw_response": response_text[:2000]
             }
     
     def parse_pdf(self, pdf_bytes: bytes) -> dict:
@@ -177,7 +201,7 @@ Return ONLY the JSON object, nothing else."""
         
         structured_data = self.parse_resume_to_json(raw_text)
         
-        # Add the raw text for reference
+        # Add the raw text for reference/debugging
         structured_data["_raw_text"] = raw_text
         
         return structured_data

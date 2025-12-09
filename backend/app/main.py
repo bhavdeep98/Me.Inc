@@ -7,6 +7,11 @@ import uuid
 
 from app.database import engine, Base, get_db
 from app.models import ResumeProfile
+from dotenv import load_dotenv
+import os
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Create tables if they don't exist (basic auto-migration for now)
 Base.metadata.create_all(bind=engine)
@@ -17,8 +22,10 @@ app = FastAPI(title="Me Inc. Job Agent", version="1.0.0")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",  # Next.js dev server
+        "http://localhost:3000",
         "http://127.0.0.1:3000",
+        "http://localhost:3001",  # New Port
+        "http://127.0.0.1:3001",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -94,7 +101,7 @@ async def upload_resume(
             detail=str(e)  # API key not set
         )
     
-    # Parse PDF with LLM
+    # Parse PDF with LLM (synchronous call)
     try:
         parsed_content = pdf_parser.parse_pdf(pdf_bytes)
     except ValueError as e:

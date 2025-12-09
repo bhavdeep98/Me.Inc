@@ -57,12 +57,17 @@ We will use the `resume_versions` table, but specifically the `content` JSONB co
 *   **Role**: Convert raw PDF text -> Structured JSON.
 *   **Prompt**: "You are a data entry expert. Map this messy resume text into our Schema. If fields are missing, mark them as `null`."
 
-#### Agent B: "The Interviewer" (Your "Experienced Feedback" Hook)
-*   **Role**: The Coach.
-*   **Logic**:
-    *   If `years_exp < 3`: Ask about *skills* and *speed*.
-    *   If `years_exp > 7`: Ask about *strategy* and *leadership*.
-*   **Action**: It reads the JSON, finds weak `accomplishments`, and generates a question for the user.
+#### Agent B: "The Domain Expert Guide" (Powered by DSPy)
+*   **Role**: The Mentor / Domain Expert.
+*   **Methodology**: STAR (Situation, Task, Action, Result) Framework.
+*   **Logic (DSPy Module)**:
+    *   **Input**: Raw User Story + Domain Context (e.g., "Backend Engineering").
+    *   **Retrieval**: Fetches "Good Problems" for that domain (e.g., "Latency," "Scalability").
+    *   **Optimization**:
+        *   Critique: "This story lacks 'Action'. You mentioned the result but not *how* you did it."
+        *   Refinement: Rewrites the bullet point to emphasize the *solution* using strong action verbs.
+*   **Interaction**:
+    *   It doesn't just ask questions; it *guides* the user: "For a Senior Engineer, simply saying 'built API' is weak. Did you improve latency? Did you handle high concurrency? Tell me about the *scale*."
 
 #### Agent C: "The LaTex Specialist"
 *   **Role**: The Typesetter.
